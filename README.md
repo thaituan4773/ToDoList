@@ -2,6 +2,32 @@
 
 Ứng dụng quản lý công việc (Todo List) được xây dựng bằng Spring Boot, hỗ trợ cả backend API và giao diện (Thymeleaf).
 
+## Tính năng
+
+- Thêm công việc mới
+- Cập nhật nội dung công việc
+- Xóa công việc
+- Đánh dấu hoàn thành / chưa hoàn thành
+- Tìm kiếm công việc theo từ khóa
+- Lọc công việc theo trạng thái
+- Giao diện web với Thymeleaf
+- REST API hỗ trợ CRUD đầy đủ
+
+
+## ⚠️ Lưu ý
+
+- Dữ liệu được dùng chung giữa tất cả người dùng
+- Không có phân tách dữ liệu theo từng tài khoản (multi-user sharing)
+- Đây là project demo, chưa tối ưu cho production
+
+---
+
+## Live Demo
+
+🔗 https://todo-list-app-u7nyv.ondigitalocean.app
+
+---
+
 ## Công nghệ sử dụng
 
 - Java 25 (Temurin 25.0.3 LTS)
@@ -10,6 +36,8 @@
 - H2 Database
 - Maven
 - Thymeleaf
+
+---
 
 ## Yêu cầu
 
