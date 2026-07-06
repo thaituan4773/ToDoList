@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lỗi - Todo List</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="container">
+    <header class="app-header">
+        <h1>Có Lỗi Xảy Ra</h1>
+        <p class="subtitle">Xin lỗi, có điều gì đó không đúng</p>
+    </header>
+
+    <section class="card error-card">
+        <h2 id="status">404</h2>
+        <p id="message">Trang không tìm thấy</p>
+        
+        <div class="error-details">
+            <p id="path" class="error-path"></p>
+            <p id="error" class="error-info"></p>
+        </div>
+
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">Quay lại Trang chủ</a>
+            <a href="javascript:history.back()" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </section>
+
+    <footer>
+        <p>Nếu bạn cho rằng đây là lỗi, vui lòng liên hệ với quản trị viên</p>
+    </footer>
+</div>
+
+<script>
+// Parse error information from URL parameters or attributes
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    
+    const status = params.get('status') || document.body.getAttribute('data-status') || '500';
+    const message = params.get('message') || document.body.getAttribute('data-message') || 'Lỗi máy chủ nội bộ';
+    const path = params.get('path') || document.body.getAttribute('data-path') || '';
+    const error = params.get('error') || document.body.getAttribute('data-error') || '';
+    
+    // Update page content
+    document.getElementById('status').textContent = status;
+    document.getElementById('message').textContent = message;
+    
+    if (path) {
+        document.getElementById('path').textContent = `Đường dẫn: ${path}`;
+    } else {
+        document.getElementById('path').style.display = 'none';
+    }
+    
+    if (error) {
+        document.getElementById('error').textContent = `Chi tiết: ${error}`;
+    } else {
+        document.getElementById('error').style.display = 'none';
+    }
+});
+</script>
+</body>
+</html>

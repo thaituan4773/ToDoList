@@ -4,9 +4,10 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.ddtt.todolist.dto.ToDoResponse;
-import com.ddtt.todolist.model.ToDo;
 import com.ddtt.todolist.dto.ToDoRequest;
+import com.ddtt.todolist.dto.ToDoResponse;
+import com.ddtt.todolist.exceptions.ResourceNotFoundException;
+import com.ddtt.todolist.model.ToDo;
 import com.ddtt.todolist.repositories.ToDoRepository;
 import com.ddtt.todolist.services.ToDoService;
 
@@ -47,18 +48,19 @@ public class ToDoServiceImpl implements ToDoService {
 
     @Override
     public ToDoResponse getTodoById(Long id) {
-        ToDo todo = toDoRepository.findById(id).orElse(null);
-        return todo != null ? map(todo) : null;
+        ToDo todo = toDoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Todo not found with id: " + id));
+        return map(todo);
     }
 
     @Override
     public ToDoResponse updateTodo(Long id, ToDoRequest todoRequest) {
-        ToDo todo = toDoRepository.findById(id).orElse(null);
-        if (todo == null) {
-            return null;
-        }
+        ToDo todo = toDoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Todo not found with id: " + id));
         todo.setTitle(todoRequest.getTitle());
-        todo.setDescription(todoRequest.getDescription());
+        if (todoRequest.getDescription() != null) {
+            todo.setDescription(todoRequest.getDescription());
+        }
         ToDo updatedTodo = toDoRepository.save(todo);
         return map(updatedTodo);
     }
@@ -81,12 +83,10 @@ public class ToDoServiceImpl implements ToDoService {
     }
 
     @Override
-    public ToDoResponse markTodoAsCompleted(Long id) {
-        ToDo todo = toDoRepository.findById(id).orElse(null);
-        if (todo == null) {
-            return null;
-        }
-        todo.setCompleted(true);
+    public ToDoResponse toggleTodoCompletionStatus(Long id) {
+        ToDo todo = toDoRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Todo not found with id: " + id));
+        todo.setCompleted(!todo.isCompleted());
         ToDo updatedTodo = toDoRepository.save(todo);
         return map(updatedTodo);
     }

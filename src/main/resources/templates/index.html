@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List - SRT GROUP Intern Test</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="app-header">
+            <h1>📋 Todo List</h1>
+        </header>
+
+        <section class="card">
+            <h2>Thêm công việc mới</h2>
+            <form id="todoForm" class="todo-form">
+                <div class="form-row">
+                    <input type="text" id="title" placeholder="Tiêu đề công việc *" required maxlength="200" />
+                    <span id="titleError" class="error-text"></span>
+                </div>
+                <div class="form-row">
+                    <textarea id="description" placeholder="Mô tả (tuỳ chọn)" maxlength="1000"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Thêm công việc</button>
+            </form>
+            <div id="createMessage" class="message"></div>
+        </section>
+
+        <section class="card">
+            <h2>Danh sách công việc <span class="badge" id="totalCount">0</span></h2>
+
+            <div class="filter-form">
+                <input type="text" id="keyword" placeholder="Tìm theo tiêu đề..." />
+                <select id="statusFilter">
+                    <option value="all">Tất cả</option>
+                    <option value="pending">Chưa hoàn thành</option>
+                    <option value="completed">Đã hoàn thành</option>
+                </select>
+                <button class="btn btn-link" onclick="clearFilter()">Xoá lọc</button>
+            </div>
+
+            <div id="emptyState" class="empty-state">
+                Không có công việc nào.
+            </div>
+
+            <ul id="todoList" class="todo-list"></ul>
+        </section>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal" style="display: none;" onclick="closeEditModalOnBackdrop(event)">
+        <div class="modal-content modal-sm" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h2>Chỉnh sửa công việc</h2>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="editForm" class="modal-body">
+                <div class="form-row">
+                    <label for="editTitle">Tiêu đề *</label>
+                    <input type="text" id="editTitle" required maxlength="200" />
+                    <span id="editTitleError" class="error-text"></span>
+                </div>
+                <div class="form-row">
+                    <label for="editDescription">Mô tả</label>
+                    <textarea id="editDescription" maxlength="1000"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Cập nhật</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal" style="display: none;" onclick="closeDeleteModalOnBackdrop(event)">
+        <div class="modal-content modal-sm" onclick="event.stopPropagation()">
+            <div class="modal-body modal-body-center">
+                <h3>Xóa công việc?</h3>
+                <p class="delete-description">
+                    Hành động này sẽ xóa vĩnh viễn công việc khỏi danh sách.
+                    <br>
+                    <strong>Bạn sẽ không thể hoàn tác.</strong>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Hủy</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/todos';
+        let editingTodoId = null;
+        let deletingTodoId = null;
+
+        // Load todos on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTodos();
+            document.getElementById('todoForm').addEventListener('submit', handleCreateTodo);
+            document.getElementById('editForm').addEventListener('submit', handleUpdateTodo);
+            document.getElementById('keyword').addEventListener('keyup', debounce(loadTodos, 500));
+            document.getElementById('statusFilter').addEventListener('change', loadTodos);
+
+            // Close modals on Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (document.getElementById('editModal').style.display === 'flex') {
+                        closeEditModal();
+                    }
+                    if (document.getElementById('deleteModal').style.display === 'flex') {
+                        closeDeleteModal();
+                    }
+                }
+            });
+        });
+
+        async function loadTodos() {
+            try {
+                const keyword = document.getElementById('keyword').value;
+                const status = document.getElementById('statusFilter').value;
+
+                let todos = [];
+
+                // Get all todos
+                let response = await fetch(`${API_BASE}`);
+                if (!response.ok) throw new Error('Failed to load todos');
+                todos = await response.json();
+
+                // Apply filters
+                if (keyword) {
+                    response = await fetch(`${API_BASE}/search?keyword=${encodeURIComponent(keyword)}`);
+                    if (response.ok) {
+                        todos = await todos.filter(t =>
+                            t.title.toLowerCase().includes(keyword.toLowerCase())
+                        );
+                    }
+                }
+
+                if (status === 'completed') {
+                    todos = todos.filter(t => t.completed);
+                } else if (status === 'pending') {
+                    todos = todos.filter(t => !t.completed);
+                }
+
+                displayTodos(todos);
+            } catch (error) {
+                console.error('Error loading todos:', error);
+                showMessage('Lỗi khi tải danh sách công việc', 'error');
+            }
+        }
+
+        function displayTodos(todos) {
+            const todoList = document.getElementById('todoList');
+            const emptyState = document.getElementById('emptyState');
+            const totalCount = document.getElementById('totalCount');
+
+            totalCount.textContent = todos.length;
+
+            if (todos.length === 0) {
+                todoList.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            todoList.innerHTML = todos.map(todo => `
+        <li class="${todo.completed ? 'completed' : ''}">
+            <div class="todo-main">
+                <button class="btn-check"
+                        onclick="toggleTodo(${todo.id})"
+                        title="${todo.completed ? 'Đánh dấu chưa hoàn thành' : 'Đánh dấu hoàn thành'}">
+                    <i class="bi ${todo.completed ? 'bi-check-circle-fill completed-icon' : 'bi-circle pending-icon'}"></i>
+                </button>
+                <div class="todo-text">
+                    <strong>${escapeHtml(todo.title)}</strong>
+                    ${todo.description && todo.description.trim() ? `<p><em>${escapeHtml(todo.description)}</em></p>` : '<p><em style="color: #bbb;">Không có mô tả</em></p>'}
+                    ${todo.createdAt ? `<small class="meta">Tạo lúc: ${formatDate(todo.createdAt)}</small>` : ''}
+                </div>
+            </div>
+            <div class="todo-actions">
+                <button class="btn-icon btn-icon-edit"
+                        onclick="openEditModal(${todo.id})"
+                        title="Sửa">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+
+                <button class="btn-icon btn-icon-delete"
+                        onclick="openDeleteModal(${todo.id})"
+                        title="Xóa">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </li>
+    `).join('');
+        }
+
+        async function handleCreateTodo(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('title').value.trim();
+            const description = document.getElementById('description').value.trim();
+
+            if (!title) {
+                document.getElementById('titleError').textContent = 'Title is required';
+                return;
+            }
+
+            document.getElementById('titleError').textContent = '';
+
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to create todo');
+                }
+
+                document.getElementById('todoForm').reset();
+                showMessage('Công việc đã được thêm thành công!', 'success');
+                loadTodos();
+            } catch (error) {
+                console.error('Error creating todo:', error);
+                showMessage('Lỗi: ' + error.message, 'error');
+            }
+        }
+
+        async function openEditModal(id) {
+            try {
+                const response = await fetch(`${API_BASE}/${id}`);
+                if (!response.ok) throw new Error('Failed to load todo');
+
+                const todo = await response.json();
+                editingTodoId = id;
+
+                document.getElementById('editTitle').value = todo.title;
+                document.getElementById('editDescription').value = todo.description || '';
+                document.getElementById('editTitleError').textContent = '';
+
+                document.getElementById('editModal').style.display = 'flex';
+                document.getElementById('editTitle').focus();
+            } catch (error) {
+                console.error('Error loading todo:', error);
+                showMessage('Lỗi khi tải công việc', 'error');
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            editingTodoId = null;
+            document.getElementById('editForm').reset();
+            document.getElementById('editTitleError').textContent = '';
+        }
+
+        function closeEditModalOnBackdrop(event) {
+            if (event.target.id === 'editModal') {
+                closeEditModal();
+            }
+        }
+
+        async function handleUpdateTodo(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('editTitle').value.trim();
+            const description = document.getElementById('editDescription').value.trim();
+
+            if (!title) {
+                document.getElementById('editTitleError').textContent = 'Title is required';
+                return;
+            }
+
+            document.getElementById('editTitleError').textContent = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/${editingTodoId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, description })
+                });
+
+                if (!response.ok) throw new Error('Failed to update todo');
+
+                showMessage('Công việc đã được cập nhật!', 'success');
+                closeEditModal();
+                loadTodos();
+            } catch (error) {
+                console.error('Error updating todo:', error);
+                showMessage('Lỗi: ' + error.message, 'error');
+            }
+        }
+
+        async function toggleTodo(id) {
+            try {
+                const response = await fetch(`${API_BASE}/${id}/complete`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) throw new Error('Failed to toggle todo');
+                loadTodos();
+            } catch (error) {
+                console.error('Error toggling todo:', error);
+                showMessage('Lỗi khi cập nhật công việc', 'error');
+            }
+        }
+
+        async function openDeleteModal(id) {
+            deletingTodoId = id;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            deletingTodoId = null;
+        }
+
+        function closeDeleteModalOnBackdrop(event) {
+            if (event.target.id === 'deleteModal') {
+                closeDeleteModal();
+            }
+        }
+
+        async function confirmDelete() {
+            if (!deletingTodoId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/${deletingTodoId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete todo');
+
+                showMessage('Công việc đã được xoá!', 'success');
+                closeDeleteModal();
+                loadTodos();
+            } catch (error) {
+                console.error('Error deleting todo:', error);
+                showMessage('Lỗi khi xoá công việc', 'error');
+            }
+        }
+
+        function clearFilter() {
+            document.getElementById('keyword').value = '';
+            document.getElementById('statusFilter').value = 'all';
+            loadTodos();
+        }
+
+        function showMessage(msg, type = 'info') {
+            const messageDiv = document.getElementById('createMessage');
+            messageDiv.textContent = msg;
+            messageDiv.className = `message ${type}`;
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = 'message';
+            }, 3000);
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('vi-VN');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function debounce(func, delay) {
+            let timeoutId;
+            return function (...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => func(...args), delay);
+            };
+        }
+    </script>
+</body>
+
+</html>

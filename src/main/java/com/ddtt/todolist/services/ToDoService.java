@@ -2,8 +2,8 @@ package com.ddtt.todolist.services;
 
 import java.util.List;
 
-import com.ddtt.todolist.dto.ToDoResponse;
 import com.ddtt.todolist.dto.ToDoRequest;
+import com.ddtt.todolist.dto.ToDoResponse;
 
 public interface ToDoService {
     ToDoResponse createTodo(ToDoRequest todoRequest);
@@ -13,6 +13,6 @@ public interface ToDoService {
     void deleteTodo(Long id);
     List<ToDoResponse> getTodosByCompletionStatus(boolean completed);
     List<ToDoResponse> searchTodosByTitle(String keyword);
-    ToDoResponse markTodoAsCompleted(Long id);
+    ToDoResponse toggleTodoCompletionStatus(Long id);
 }
 

@@ -2,7 +2,9 @@ package com.ddtt.todolist.controllers;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,12 +40,12 @@ public class ToDoController {
         return toDoService.getTodoById(id);
     }
 
-    @PostMapping("/{id}")
+    @PatchMapping("/{id}")
     public ToDoResponse updateTodo(@PathVariable Long id, @Valid @RequestBody ToDoRequest todoRequest) {
         return toDoService.updateTodo(id, todoRequest);
     }
 
-    @PostMapping("/{id}/delete")
+    @DeleteMapping("/{id}")
     public void deleteTodo(@PathVariable Long id) {
         toDoService.deleteTodo(id);
     }
@@ -51,5 +53,14 @@ public class ToDoController {
     public List<ToDoResponse> getTodosByCompletionStatus(@RequestParam boolean completed) {
         return toDoService.getTodosByCompletionStatus(completed);
     }
+    
+    @GetMapping("/search")
+    public List<ToDoResponse> searchTodosByTitle(@RequestParam String keyword) {
+        return toDoService.searchTodosByTitle(keyword);
+    }
 
+    @PostMapping("/{id}/complete")
+    public ToDoResponse toggleTodoCompletionStatus(@PathVariable Long id) {
+        return toDoService.toggleTodoCompletionStatus(id);
+    }
 }
